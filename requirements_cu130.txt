@@ -10,7 +10,7 @@ packaging
 PySide6
 kornia
 cuda-toolkit==13.0.2
-nvidia-cudnn-cu13==9.23.0.39
+nvidia-cudnn-cu13==9.13.0.50  # required by torch==2.9.1+cu130 on Linux
 tensorrt-cu13
 tensorrt-cu13_libs==11.0.0.114
 tensorrt-cu13_bindings==11.0.0.114
