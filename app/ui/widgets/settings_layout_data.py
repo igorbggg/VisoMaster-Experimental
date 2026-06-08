@@ -1,6 +1,12 @@
+import sys
+
 from app.ui.widgets.actions import control_actions
 import cv2
 from app.helpers.typing_helper import LayoutDictTypes
+
+_VIRT_CAM_BACKENDS = (
+    ["obs", "v4l2"] if sys.platform.startswith("linux") else ["obs", "unitycapture"]
+)
 
 SETTINGS_LAYOUT_DATA: LayoutDictTypes = {
     "Appearance": {
@@ -418,9 +424,9 @@ SETTINGS_LAYOUT_DATA: LayoutDictTypes = {
         "VirtCamBackendSelection": {
             "level": 1,
             "label": "Virtual Camera Backend",
-            "options": ["obs", "unitycapture"],
+            "options": _VIRT_CAM_BACKENDS,
             "default": "obs",
-            "help": "Choose the backend based on the Virtual Camera you have set up",
+            "help": "Choose the backend based on the Virtual Camera you have set up (Linux: obs or v4l2loopback)",
             "parentToggle": "SendVirtCamFramesEnableToggle",
             "requiredToggleValue": True,
             "exec_function": control_actions.enable_virtualcam,

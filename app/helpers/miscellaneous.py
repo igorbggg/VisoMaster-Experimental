@@ -1,5 +1,6 @@
 import os
 import shutil
+import subprocess
 import cv2
 import time
 from collections import UserDict
@@ -592,6 +593,30 @@ def is_ffmpeg_in_path():
         print("FFMPEG Not found in your system!")
         return False
     return True
+
+
+_ffmpeg_hevc_nvenc_available = None
+
+
+def ffmpeg_has_hevc_nvenc():
+    """Return True if ffmpeg lists the hevc_nvenc encoder (NVIDIA NVENC)."""
+    global _ffmpeg_hevc_nvenc_available
+    if _ffmpeg_hevc_nvenc_available is None:
+        if not cmd_exist("ffmpeg"):
+            _ffmpeg_hevc_nvenc_available = False
+        else:
+            try:
+                result = subprocess.run(
+                    ["ffmpeg", "-hide_banner", "-encoders"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                _ffmpeg_hevc_nvenc_available = "hevc_nvenc" in result.stdout
+            except (OSError, subprocess.TimeoutExpired):
+                _ffmpeg_hevc_nvenc_available = False
+    return _ffmpeg_hevc_nvenc_available
 
 
 def cmd_exist(cmd):

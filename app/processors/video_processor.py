@@ -1191,35 +1191,55 @@ class VideoProcessor(QObject):
                 ]
             )
         else:
-            # NVENC for SDR
-            args.extend(
-                [
-                    "-c:v",
-                    "hevc_nvenc",
-                    "-preset",
-                    str(sdrpreset),
-                    "-profile:v",
-                    "main10",
-                    "-cq",
-                    str(ffquality),
-                    "-pix_fmt",
-                    "yuv420p10le",
-                    "-colorspace",
-                    "rgb",
-                    "-color_primaries",
-                    "bt709",
-                    "-color_trc",
-                    "bt709",
-                    "-spatial-aq",
-                    str(ffspatial),
-                    "-temporal-aq",
-                    str(fftemporal),
-                    "-tier",
-                    "high",
-                    "-tag:v",
-                    "hvc1",
-                ]
-            )
+            if misc_helpers.ffmpeg_has_hevc_nvenc():
+                args.extend(
+                    [
+                        "-c:v",
+                        "hevc_nvenc",
+                        "-preset",
+                        str(sdrpreset),
+                        "-profile:v",
+                        "main10",
+                        "-cq",
+                        str(ffquality),
+                        "-pix_fmt",
+                        "yuv420p10le",
+                        "-colorspace",
+                        "rgb",
+                        "-color_primaries",
+                        "bt709",
+                        "-color_trc",
+                        "bt709",
+                        "-spatial-aq",
+                        str(ffspatial),
+                        "-temporal-aq",
+                        str(fftemporal),
+                        "-tier",
+                        "high",
+                        "-tag:v",
+                        "hvc1",
+                    ]
+                )
+            else:
+                print(
+                    "[WARN] hevc_nvenc not available — falling back to libx265 for SDR recording."
+                )
+                args.extend(
+                    [
+                        "-c:v",
+                        "libx265",
+                        "-preset",
+                        str(sdrpreset),
+                        "-profile:v",
+                        "main10",
+                        "-pix_fmt",
+                        "yuv420p10le",
+                        "-crf",
+                        str(ffquality),
+                        "-tag:v",
+                        "hvc1",
+                    ]
+                )
             
         # Downscale filter
         if control["FrameEnhancerDownToggle"]:

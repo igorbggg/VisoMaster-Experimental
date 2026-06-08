@@ -9,6 +9,9 @@ os.makedirs(refldm_ckpts_path, exist_ok=True)
 canonswap_model_path = "model_assets/canonswap"
 os.makedirs(canonswap_model_path, exist_ok=True)
 
+liveportrait_onnx_path = "model_assets/liveportrait_onnx"
+os.makedirs(liveportrait_onnx_path, exist_ok=True)
+
 models_dir = str(
     Path(__file__).resolve().parent.parent.parent / "model_assets"
 )  # More robust path
@@ -534,5 +537,29 @@ models_list = [
         "local_path": f"{models_dir}/ref-ldm_embedding/ckpts/vqgan.ckpt",
         "hash": "7b08407b454f5328aaaf1eda35418a5a53dcc68caaf3bcf12ab88b8f21ec1a5d",
         "url": "https://github.com/ChiWeiHsiao/ref-ldm/releases/download/1.0.0/vqgan.ckpt",
+    },
+    {
+        "model_name": "LivePortraitLipArray",
+        "local_path": f"{models_dir}/liveportrait_onnx/lip_array.pkl",
+        "hash": "2d61aab1cc37a2741f4774fe9963b2db2566e063f798b1d28d791dd119352738",
+        "url": "https://raw.githubusercontent.com/asdf31jsa/VisoMaster-Experimental/017af1a117b7485f7191d0b8237d8f0a8665f05f/model_assets/liveportrait_onnx/lip_array.pkl",
+    },
+    {
+        "model_name": "MeanShape68",
+        "local_path": f"{models_dir}/meanshape_68.pkl",
+        "hash": "39ffecf84ba73f0d0d7e49380833ba88713c9fcdec51df4f7ac45a48b8f4cc51",
+        "url": "https://raw.githubusercontent.com/asdf31jsa/VisoMaster-Experimental/017af1a117b7485f7191d0b8237d8f0a8665f05f/model_assets/meanshape_68.pkl",
+    },
+    {
+        "model_name": "GridSample3dPluginLinux",
+        "local_path": f"{models_dir}/libgrid_sample_3d_plugin.so",
+        "hash": "bd48c852366ba6ad5ba246239306d1a4be2aff709b35c0744ef68b84b718c6b5",
+        "url": "https://raw.githubusercontent.com/asdf31jsa/VisoMaster-Experimental/refs/heads/fusion/model_assets/libgrid_sample_3d_plugin.so",
+    },
+    {
+        "model_name": "GridSample3dPluginWindows",
+        "local_path": f"{models_dir}/grid_sample_3d_plugin.dll",
+        "hash": "28c0d1ca7f4442fcd8c546c7ad6d4b9f6366dd7f265dc45227a3ea399dfa48b4",
+        "url": "https://raw.githubusercontent.com/asdf31jsa/VisoMaster-Experimental/refs/heads/fusion/model_assets/grid_sample_3d_plugin.dll",
     },
 ]

@@ -56,12 +56,13 @@ VisoMaster-Fusion includes all the great features of the original plus major enh
 ---
 
 ### **Prerequisites**
-- Portable Version: No pre-requirements
+- Portable Version: No pre-requirements (Windows only)
 - Non-Portable Version:
     -   **Git** ([Download](https://git-scm.com/downloads))
     -   **Miniconda** ([Download](https://www.anaconda.com/download))
         <br> or
     -   **uv** ([Installation choices])(https://docs.astral.sh/uv/getting-started/installation/)
+- **Ubuntu 24.04 + NVIDIA GPU:** see [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md) (uv, CUDA 12.9 / cu129 stack)
 
 ## **Installation Guide (VisoMaster-Fusion)**
 
@@ -107,7 +108,11 @@ pip install uv
 uv venv --python 3.11
 ```
 ```sh
+# Windows
 .venv\Scripts\activate
+
+# Linux / macOS
+source .venv/bin/activate
 ```
 
 **3. Install requirements**
@@ -120,34 +125,58 @@ uv pip install -r requirements_cu129.txt
 python download_models.py
 ```
 
-**5. Run the Application**
+**5. Generate UI files (required before first run)**
+
+The files `app/ui/core/main_window.py` and `app/ui/core/media_rc.py` are not in git. Generate them once:
+
+```sh
+# Windows
+app\ui\core\convert_ui_to_py.bat
+
+# Ubuntu
+./scripts/ubuntu/convert_ui.sh
+```
+
+**6. Run the Application**
 
 Once everything is set up, start the application:
-- by opening the **Start.bat** file (for Windows)
-or
-Activate conda or uv environment in a terminal in the visomaster directory:
+- **Windows:** open **Start.bat**
+- **Ubuntu:** `./scripts/ubuntu/start.sh` (see [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md))
+- **Manual:** activate the environment and run `python main.py`
 
 ```
 # If you use Anaconda
 conda activate visomaster
 
-# If you use uv only
+# If you use uv (Windows)
 .venv\Scripts\activate
+
+# If you use uv (Linux)
+source .venv/bin/activate
 
 # Start visomaster
 python main.py
 ```
 
 
-**5.1 Update to latest code state**
+**6.1 Update to latest code state**
+
 ```sh
-cd VisoMaster
+# Windows (cu129)
+scripts\update_cu129.bat
+
+# Ubuntu
+./scripts/ubuntu/update.sh
+
+# Or manually
 git pull
+uv pip install -r requirements_cu129.txt
+python download_models.py
 ```
 
 ---
 
-**6. Install ffmpeg**
+**7. Install ffmpeg**
 
 In Windows - Either via:
 
@@ -158,6 +187,12 @@ In Windows - Either via:
 - Download ffmpeg zip: https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-7.1.1-essentials_build.zip
 - Unzip it somewhere
 - Add "\<unzipped ffmpeg path>\bin" folder to your Windows environment PATH variable
+
+In Ubuntu 24.04:
+
+```sh
+sudo apt install -y ffmpeg
+```
 
 ## How to use the Job Manager
 1.  Set up your workspace as you normally would before recording (select source/target faces, adjust settings, etc.).

@@ -60,6 +60,7 @@ def download_file(model_name: str, file_path: str, correct_hash: str, url: str) 
                 with tqdm(
                     total=total_size, unit="B", unit_scale=True, desc=model_name
                 ) as progress_bar:
+                    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
                     with open(file_path, "wb") as f:
                         for chunk in response.iter_content(
                             chunk_size=DOWNLOAD_CHUNK_SIZE

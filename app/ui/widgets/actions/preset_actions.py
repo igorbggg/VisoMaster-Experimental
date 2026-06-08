@@ -74,13 +74,11 @@ def delete_preset(main_window: "MainWindow", item: "QListWidgetItem"):
     """Rename the selected preset"""
     delete_preset = item.text()
     delete_path = Path("presets") / f"{delete_preset}.json"
-    delete_path = str(delete_path).replace("/", "\\")
     delete_path_ctl = Path("presets") / f"{delete_preset}_ctl.json"
-    delete_path_ctl = str(delete_path_ctl).replace("/", "\\")
 
     try:
-        send2trash(delete_path)
-        send2trash(delete_path_ctl)
+        send2trash(str(delete_path))
+        send2trash(str(delete_path_ctl))
         print(f"Preset: {delete_preset} has been sent to the trash.")
         refresh_presets_list(main_window)
 
