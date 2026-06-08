@@ -50,6 +50,7 @@ def release_frame_gpu_memory(
     *,
     synchronize: bool = True,
     empty_cache: bool = False,
+    clear_session_caches: bool = False,
 ) -> None:
     """
     Lightweight per-frame GPU memory release after frame processing completes.
@@ -64,5 +65,5 @@ def release_frame_gpu_memory(
         torch.cuda.synchronize()
     if empty_cache:
         torch.cuda.empty_cache()
-    if models_processor is not None and empty_cache:
+    if models_processor is not None and clear_session_caches:
         clear_session_vram_caches(models_processor)

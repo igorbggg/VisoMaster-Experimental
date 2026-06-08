@@ -57,6 +57,7 @@ class FrameWorker(threading.Thread):
         frame_number,
         frame_queue,
         is_single_frame=False,
+        gpu_slot_held=False,
     ):
         super().__init__()
         self.frame_queue = frame_queue
@@ -66,6 +67,7 @@ class FrameWorker(threading.Thread):
         self.models_processor = main_window.models_processor
         self.video_processor = main_window.video_processor
         self.is_single_frame = is_single_frame
+        self.gpu_slot_held = gpu_slot_held
         self.parameters = {}  # Will be populated from main_window.parameters
         # VR specific constants
         self.VR_PERSPECTIVE_RENDER_SIZE = 512  # Pixels, for rendering perspective crops
@@ -106,6 +108,7 @@ class FrameWorker(threading.Thread):
         ) = get_scaling_transforms(control_params)
 
     def run(self):
+        frame_queue_claimed = False
         try:
             # Update parameters from markers (if exists)
             with (
@@ -135,8 +138,11 @@ class FrameWorker(threading.Thread):
                     "C_CONTIGUOUS"
                 ]:  # Ensure input frame is C-contiguous
                     self.frame = np.ascontiguousarray(self.frame)
-                # process_frame returns BGR, uint8
-                processed_frame_bgr_np_uint8 = self.process_frame(current_control_state)
+                # Serialize all GPU/ONNX work so only one frame uses VRAM at a time.
+                with self.models_processor.model_lock:
+                    processed_frame_bgr_np_uint8 = self.process_frame(
+                        current_control_state
+                    )
                 # Ensure output is C-contiguous for Qt display
                 self.frame = np.ascontiguousarray(processed_frame_bgr_np_uint8)
             else:
@@ -164,6 +170,7 @@ class FrameWorker(threading.Thread):
 
             self.video_processor.frame_queue.get()
             self.video_processor.frame_queue.task_done()
+            frame_queue_claimed = True
 
             if (
                 self.video_processor.frame_queue.empty()
@@ -176,8 +183,18 @@ class FrameWorker(threading.Thread):
         except Exception as e:
             print(f"Error in FrameWorker for frame {self.frame_number}: {e}")
             traceback.print_exc()
+            if not frame_queue_claimed:
+                try:
+                    self.video_processor.frame_queue.get_nowait()
+                    self.video_processor.frame_queue.task_done()
+                except Exception:
+                    pass
         finally:
-            release_frame_gpu_memory(self.models_processor, synchronize=True)
+            if self.gpu_slot_held:
+                self.video_processor._gpu_worker_semaphore.release()
+            release_frame_gpu_memory(
+                self.models_processor, synchronize=True, empty_cache=True
+            )
 
     def tensor_to_pil(self, tensor):
         if tensor.dim() == 4:

@@ -360,6 +360,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             layoutWidget=self.settingsWidgetsLayout,
             data_type="control",
         )
+        # Apply thread limit from settings default (slider default is 1; exec_function
+        # only runs on user change, so sync VideoProcessor here).
+        thread_count = int(float(self.control.get("nThreadsSlider", 1)))
+        self.video_processor.apply_thread_limit(thread_count)
+        self.models_processor.nThreads = thread_count
+
         layout_actions.add_widgets_to_tab_layout(
             self,
             LAYOUT_DATA=FACE_EDITOR_LAYOUT_DATA,

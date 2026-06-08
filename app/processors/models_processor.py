@@ -230,7 +230,14 @@ class ModelsProcessor(QtCore.QObject):
             "trt_layer_norm_fp32_fallback": True,
             "trt_builder_optimization_level": 5,
         }
-        self.providers = [("CUDAExecutionProvider"), ("CPUExecutionProvider")]
+        self.cuda_ep_options = {
+            # Avoid ONNX Runtime growing a large persistent CUDA arena on 16 GB cards.
+            "arena_extend_strategy": "kSameAsRequested",
+        }
+        self.providers = [
+            ("CUDAExecutionProvider", self.cuda_ep_options),
+            ("CPUExecutionProvider"),
+        ]
         self.syncvec = torch.empty((1, 1), dtype=torch.float32, device=self.device)
         self.nThreads = 1
 
@@ -616,7 +623,7 @@ class ModelsProcessor(QtCore.QObject):
             case "TensorRT" | "TensorRT-Engine":
                 providers = [
                     ("TensorrtExecutionProvider", self.trt_ep_options),
-                    ("CUDAExecutionProvider"),
+                    ("CUDAExecutionProvider", self.cuda_ep_options),
                     ("CPUExecutionProvider"),
                 ]
                 self.device = "cuda"
@@ -633,7 +640,10 @@ class ModelsProcessor(QtCore.QObject):
                 providers = [("CPUExecutionProvider")]
                 self.device = "cpu"
             case "CUDA":
-                providers = [("CUDAExecutionProvider"), ("CPUExecutionProvider")]
+                providers = [
+                    ("CUDAExecutionProvider", self.cuda_ep_options),
+                    ("CPUExecutionProvider"),
+                ]
                 self.device = "cuda"
             # case _:
 

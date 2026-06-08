@@ -51,16 +51,19 @@ class VideoProcessor(QObject):
     single_frame_processed_signal = Signal(int, QPixmap, numpy.ndarray)
     processing_started_signal = Signal()  # Unified signal for any processing start
 
-    def __init__(self, main_window: "MainWindow", num_threads=2):
+    def __init__(self, main_window: "MainWindow", num_threads=1):
         super().__init__()
         self.main_window = main_window
 
         # --- Worker Thread Management ---
         self.num_threads = num_threads
-        self.preroll_target = max(20, self.num_threads * 2) # Target number of frames before playback starts
-        self.max_display_buffer_size = self.preroll_target * 4 # Max frames allowed "in flight" (queued + being displayed)
+        self.preroll_target = max(4, self.num_threads * 2)
+        # Display buffer only — GPU concurrency is limited separately by _gpu_worker_semaphore.
+        self.max_display_buffer_size = self.preroll_target * 2
         self.frame_queue = queue.Queue(maxsize=self.max_display_buffer_size)  # Holds frame numbers for workers
         self.threads: Dict[int, threading.Thread] = {} # Active worker threads, keyed by frame number
+        # Caps concurrent FrameWorkers doing GPU inference (ONNX + PyTorch share VRAM).
+        self._gpu_worker_semaphore = threading.Semaphore(self.num_threads)
 
         # --- Media State ---
         self.media_capture: cv2.VideoCapture | None = None # The OpenCV capture object
@@ -295,7 +298,12 @@ class VideoProcessor(QObject):
                 in_flight_frames = len(self.frames_to_display) + self.frame_queue.qsize()
                 if in_flight_frames >= self.max_display_buffer_size:
                     time.sleep(0.005) # Wait 5ms (buffer full)
-                    continue 
+                    continue
+
+                # 2b. Wait for a free GPU worker slot before spawning another thread.
+                if not self._gpu_worker_semaphore.acquire(blocking=False):
+                    time.sleep(0.005)
+                    continue
 
                 # 3. Frame reading (identical)
                 # In segment mode, self.recording is False, so preview_mode=False
@@ -305,14 +313,21 @@ class VideoProcessor(QObject):
                 )
                 if not ret:
                     print(f"[ERROR] Feeder: Could not read frame {self.current_frame_number} (Mode: {'Segment' if is_segment_mode else 'Standard'})!")
+                    self._gpu_worker_semaphore.release()
                     break  # Stop reading
 
                 # 4. Send to worker (identical)
                 frame_rgb = frame_bgr[..., ::-1]
                 frame_num_to_process = self.current_frame_number
-                
-                self.frame_queue.put(frame_num_to_process)
-                self.start_frame_worker(frame_num_to_process, frame_rgb)
+
+                try:
+                    self.frame_queue.put(frame_num_to_process)
+                    self.start_frame_worker(
+                        frame_num_to_process, frame_rgb, gpu_slot_held=True
+                    )
+                except Exception:
+                    self._gpu_worker_semaphore.release()
+                    raise
                 self.current_frame_number += 1
                 
             except Exception as e:
@@ -331,16 +346,27 @@ class VideoProcessor(QObject):
                     time.sleep(0.005) # Wait 5ms (buffer full)
                     continue
 
+                if not self._gpu_worker_semaphore.acquire(blocking=False):
+                    time.sleep(0.005)
+                    continue
+
                 ret, frame_bgr = misc_helpers.read_frame(
                     self.media_capture, preview_mode=False
                 )
                 if not ret:
+                    self._gpu_worker_semaphore.release()
                     print("[WARN] Feeder: Failed to read webcam frame.")
                     continue  # Try again
 
                 frame_rgb = frame_bgr[..., ::-1]
-                self.frame_queue.put(0)  # Frame number is not relevant
-                self.start_frame_worker(0, frame_rgb, is_single_frame=False)
+                try:
+                    self.frame_queue.put(0)  # Frame number is not relevant
+                    self.start_frame_worker(
+                        0, frame_rgb, is_single_frame=False, gpu_slot_held=True
+                    )
+                except Exception:
+                    self._gpu_worker_semaphore.release()
+                    raise
                 
             except Exception as e:
                 print(f"[ERROR] Error in _feed_webcam loop: {e}")
@@ -521,13 +547,19 @@ class VideoProcessor(QObject):
                 except Exception as e:
                     print(f"[WARN] Failed sending frame to virtualcam: {e}")
 
+    def apply_thread_limit(self, value: int) -> None:
+        """Update GPU worker concurrency and buffer sizes without stopping playback."""
+        value = max(1, int(value))
+        self.num_threads = value
+        self.preroll_target = max(4, self.num_threads * 2)
+        self.max_display_buffer_size = self.preroll_target * 2
+        self._gpu_worker_semaphore = threading.Semaphore(self.num_threads)
+
     def set_number_of_threads(self, value):
         """Stops processing and updates the thread count for workers."""
         self.stop_processing()  # Stop any active processing before changing threads
         self.main_window.models_processor.set_number_of_threads(value)
-        self.num_threads = value
-        self.preroll_target = max(20, self.num_threads * 2)
-        self.max_display_buffer_size = self.preroll_target * 4
+        self.apply_thread_limit(value)
         self.frame_queue = queue.Queue(maxsize=self.max_display_buffer_size)
         print(f"Max Threads set as {value} ")
 
@@ -703,10 +735,20 @@ class VideoProcessor(QObject):
                 print("Playback mode.")
                 self._start_synchronized_playback()
 
-    def start_frame_worker(self, frame_number, frame, is_single_frame=False):
+    def start_frame_worker(
+        self, frame_number, frame, is_single_frame=False, gpu_slot_held=False
+    ):
         """Starts a FrameWorker to process the given frame."""
+        if is_single_frame and not gpu_slot_held:
+            self._gpu_worker_semaphore.acquire()
+            gpu_slot_held = True
         worker = FrameWorker(
-            frame, self.main_window, frame_number, self.frame_queue, is_single_frame
+            frame,
+            self.main_window,
+            frame_number,
+            self.frame_queue,
+            is_single_frame,
+            gpu_slot_held=gpu_slot_held,
         )
         self.threads[frame_number] = worker
         if is_single_frame:
