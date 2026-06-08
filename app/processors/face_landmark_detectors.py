@@ -34,6 +34,7 @@ class FaceLandmarkDetectors:
         self.landmark_5_anchors = []
         self.landmark_5_scale1_cache = {}
         self.landmark_5_priors = None
+        self._landmark_scale1_cache_max = 16
 
         # A dictionary to map a string identifier (e.g., '68') to the corresponding
         # model name and the specific function that processes its output.
@@ -68,6 +69,10 @@ class FaceLandmarkDetectors:
                 "function": self.detect_face_landmark_478,
             },
         }
+
+    def clear_gpu_caches(self) -> None:
+        """Release cached landmark scaling tensors from VRAM."""
+        self.landmark_5_scale1_cache.clear()
 
     def run_detect_landmark(
         self, img, bbox, det_kpss, detect_mode="203", score=0.5, from_points=False
@@ -291,6 +296,8 @@ class FaceLandmarkDetectors:
         # Prepare scaling factor for post-processing.
         height, width = 512, 512
         if (width, height) not in self.landmark_5_scale1_cache:
+            if len(self.landmark_5_scale1_cache) >= self._landmark_scale1_cache_max:
+                self.landmark_5_scale1_cache.clear()
             self.landmark_5_scale1_cache[(width, height)] = torch.tensor(
                 [width, height] * 5,
                 dtype=torch.float32,

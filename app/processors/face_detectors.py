@@ -33,6 +33,10 @@ class FaceDetectors:
             "Yunet": {"model_name": "YunetN", "function": self.detect_yunet},
         }
 
+    def clear_gpu_caches(self) -> None:
+        """Release cached detector anchor tensors from VRAM."""
+        self.center_cache.clear()
+
     def _prepare_detection_image(
         self, img: torch.Tensor, input_size: tuple, normalization_mode: str
     ) -> tuple[torch.Tensor, torch.Tensor, tuple]:

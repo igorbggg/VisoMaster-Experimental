@@ -19,6 +19,7 @@ import math
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 from PySide6.QtGui import QPixmap
 from app.processors.workers.frame_worker import FrameWorker
+from app.processors.utils.vram_cache import clear_session_vram_caches, release_frame_gpu_memory
 from app.ui.widgets.actions import graphics_view_actions
 from app.ui.widgets.actions import common_actions as common_widget_actions
 from app.ui.widgets.actions import video_control_actions
@@ -120,6 +121,8 @@ class VideoProcessor(QObject):
         self.next_frame_to_display = 0 # The next frame number the UI should display
         self.frames_to_display: Dict[int, Tuple[QPixmap, numpy.ndarray]] = {} # Processed video frames
         self.webcam_frames_to_display = queue.Queue() # Processed webcam frames
+        self._frames_since_gpu_cleanup = 0
+        self._gpu_cleanup_interval = 60  # Run session cache sweep every N displayed frames
 
         # --- Signal Connections ---
         self.frame_processed_signal.connect(self.store_frame_to_display)
@@ -166,7 +169,7 @@ class VideoProcessor(QObject):
                 self.main_window, pixmap, frame_number
             )
         self.current_frame = frame
-        torch.cuda.empty_cache()
+        release_frame_gpu_memory(self.main_window.models_processor, synchronize=False)
         common_widget_actions.update_gpu_memory_progressbar(self.main_window)
 
     def _start_metronome(self, target_fps: float, is_first_start: bool = True):
@@ -491,6 +494,18 @@ class VideoProcessor(QObject):
             # Increment for next frame
             self.next_frame_to_display += 1
 
+        # Release display buffer references promptly after the frame is consumed.
+        del pixmap, frame
+
+        # Periodic session cache sweep during long playback/recording sessions.
+        self._frames_since_gpu_cleanup += 1
+        if self._frames_since_gpu_cleanup >= self._gpu_cleanup_interval:
+            self._frames_since_gpu_cleanup = 0
+            clear_session_vram_caches(self.main_window.models_processor)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+
     def send_frame_to_virtualcam(self, frame: numpy.ndarray):
         """Sends the given frame to the pyvirtualcam device, if enabled."""
         if self.main_window.control["SendVirtCamFramesEnableToggle"] and self.virtcam:
@@ -511,7 +526,9 @@ class VideoProcessor(QObject):
         self.stop_processing()  # Stop any active processing before changing threads
         self.main_window.models_processor.set_number_of_threads(value)
         self.num_threads = value
-        self.frame_queue = queue.Queue(maxsize=self.num_threads)
+        self.preroll_target = max(20, self.num_threads * 2)
+        self.max_display_buffer_size = self.preroll_target * 4
+        self.frame_queue = queue.Queue(maxsize=self.max_display_buffer_size)
         print(f"Max Threads set as {value} ")
 
     def process_video(self):
@@ -879,6 +896,8 @@ class VideoProcessor(QObject):
 
         # 10. Final cleanup
         print("Clearing GPU Cache and running garbage collection.")
+        clear_session_vram_caches(self.main_window.models_processor)
+        self._frames_since_gpu_cleanup = 0
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

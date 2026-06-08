@@ -2,6 +2,7 @@ import traceback
 from typing import TYPE_CHECKING, Dict
 import threading
 import math
+import gc
 from math import floor, ceil
 
 from PIL import Image
@@ -20,6 +21,7 @@ import numpy as np
 import torch.nn.functional as F
 
 from app.processors.utils import faceutil
+from app.processors.utils.vram_cache import release_frame_gpu_memory
 import app.ui.widgets.actions.common_actions as common_widget_actions
 from app.ui.widgets.actions import video_control_actions
 from app.helpers.miscellaneous import ParametersDict, get_scaling_transforms
@@ -174,6 +176,8 @@ class FrameWorker(threading.Thread):
         except Exception as e:
             print(f"Error in FrameWorker for frame {self.frame_number}: {e}")
             traceback.print_exc()
+        finally:
+            release_frame_gpu_memory(self.models_processor, synchronize=True)
 
     def tensor_to_pil(self, tensor):
         if tensor.dim() == 4:
@@ -714,8 +718,11 @@ class FrameWorker(threading.Thread):
                 original_equirect_tensor_for_vr,
                 processed_perspective_crops_details,
                 analyzed_faces_for_vr,
+                final_equirect_torch_cxhxw_rgb_uint8,
             )
-            torch.cuda.empty_cache()
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
         else:
             # --- Standard Path ---
             img = processed_tensor_rgb_uint8
@@ -987,6 +994,7 @@ class FrameWorker(threading.Thread):
         final_img_np_rgb_uint8 = (
             processed_tensor_rgb_uint8.permute(1, 2, 0).cpu().numpy().astype(np.uint8)
         )
+        del processed_tensor_rgb_uint8
         if not final_img_np_rgb_uint8.flags["C_CONTIGUOUS"]:
             final_img_np_rgb_uint8 = np.ascontiguousarray(final_img_np_rgb_uint8)
 
@@ -1454,7 +1462,8 @@ class FrameWorker(threading.Thread):
                             swapper_output = torch.squeeze(swapper_output)
                             swapper_output = swapper_output.permute(1, 2, 0)
 
-                            output[j::dim, i::dim] = swapper_output.clone()
+                            output[j::dim, i::dim].copy_(swapper_output)
+                            del input_face_disc, swapper_output
                     prev_face = input_face_affined.clone()
                     input_face_affined = output.clone()
                     output = torch.mul(output, 255)

@@ -8,7 +8,13 @@ from functools import lru_cache
 # calculates the 3D coordinate grid for an equirectangular output.
 # It is decorated with @lru_cache to ensure it only runs once for a given
 # height, width, and device, caching the result for all subsequent calls.
-@lru_cache(maxsize=None)
+# Bounded caches: equirect grids are keyed by resolution (few unique values);
+# rotation matrices grow with every unique (theta, phi) pair during VR playback.
+_EQUIRECT_GRID_CACHE_MAX = 8
+_ROTATION_MATRIX_CACHE_MAX = 128
+
+
+@lru_cache(maxsize=_EQUIRECT_GRID_CACHE_MAX)
 def _get_equirect_xyz_grid_cached(height: int, width: int, device_str: str) -> torch.Tensor:
     """
     Generates and caches a grid of 3D Cartesian unit vectors corresponding to
@@ -35,7 +41,7 @@ def _get_equirect_xyz_grid_cached(height: int, width: int, device_str: str) -> t
 
 
 # This function should be at the module level
-@lru_cache(maxsize=None) # Cache based on THETA_deg, PHI_deg, device_str
+@lru_cache(maxsize=_ROTATION_MATRIX_CACHE_MAX)  # THETA_deg, PHI_deg, device_str
 def _get_rotation_matrices_cached(THETA_deg: float, PHI_deg: float, device_str: str):
     """
     Calculates and caches rotation matrices.
@@ -62,6 +68,13 @@ def _get_rotation_matrices_cached(THETA_deg: float, PHI_deg: float, device_str: 
     R2_inv_torch = torch.from_numpy(np.linalg.inv(R2_np)).float().to(device)
 
     return R1_inv_torch, R2_inv_torch
+
+
+def clear_vr_grid_caches() -> None:
+    """Release cached VR180 equirectangular grids and rotation matrices from VRAM."""
+    _get_equirect_xyz_grid_cached.cache_clear()
+    _get_rotation_matrices_cached.cache_clear()
+
 
 class Perspective:
     def __init__(self, img_tensor_cxhxw_rgb_uint8: torch.Tensor, FOV: float, THETA: float, PHI: float):

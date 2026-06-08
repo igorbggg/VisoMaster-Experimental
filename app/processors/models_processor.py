@@ -51,6 +51,7 @@ from app.processors.models_data import (
 from app.helpers.miscellaneous import is_file_exists
 from app.helpers.downloader import download_file
 from app.processors.utils.ref_ldm_kv_embedding import KVExtractor
+from app.processors.utils.vram_cache import clear_session_vram_caches
 
 if TYPE_CHECKING:
     from app.ui.main_ui import MainWindow
@@ -667,6 +668,7 @@ class ModelsProcessor(QtCore.QObject):
         self.delete_models()
         self.delete_models_dfm()
         self.delete_models_trt()
+        clear_session_vram_caches(self)
         torch.cuda.empty_cache()
 
     def ensure_kv_extractor_loaded(self):
@@ -1194,6 +1196,7 @@ class ModelsProcessor(QtCore.QObject):
         unet_model_name = self.main_window.fixed_unet_model_name
         vae_encoder_name = "RefLDMVAEEncoder"
         vae_decoder_name = "RefLDMVAEDecoder"
+        kv_tensor_map_for_this_run: Dict[str, Dict[str, torch.Tensor]] | None = None
 
         if DEBUG_DENOISER:
             print(
@@ -1213,7 +1216,6 @@ class ModelsProcessor(QtCore.QObject):
                 print("Denoiser: Critical models (UNet/VAEs) not loaded. Skipping.")
                 return image_cxhxw_uint8
 
-            kv_tensor_map_for_this_run: Dict[str, Dict[str, torch.Tensor]] | None = None
             if reference_kv_map:
                 try:
                     # Deep copy to ensure tensors are on the correct device and to avoid side effects
@@ -1502,4 +1504,5 @@ class ModelsProcessor(QtCore.QObject):
         else:
             output_image_cxhxw_uint8 = final_image_uint8
 
+        del kv_tensor_map_for_this_run
         return output_image_cxhxw_uint8
