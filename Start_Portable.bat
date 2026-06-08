@@ -46,7 +46,7 @@ if exist "%CONFIG_FILE%" (
 )
 
 :: First time setup
-set "REQ_FILE_NAME=requirements_cu129.txt"
+set "REQ_FILE_NAME=requirements_cu130.txt"
 set "DOWNLOAD_RUN=false"
 
 :: Write to config file in a clean "KEY=VALUE" format.
@@ -59,8 +59,8 @@ echo.
 
 :ConfigLoaded
 
-:: Force requirements file to cu129
-set "REQ_FILE_NAME=requirements_cu129.txt"
+:: Force requirements file to cu130
+set "REQ_FILE_NAME=requirements_cu130.txt"
 
 :: Reconstruct the full path to the requirements file from the config.
 set "REQUIREMENTS=%APP_DIR%\%REQ_FILE_NAME%"

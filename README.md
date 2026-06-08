@@ -62,7 +62,7 @@ VisoMaster-Fusion includes all the great features of the original plus major enh
     -   **Miniconda** ([Download](https://www.anaconda.com/download))
         <br> or
     -   **uv** ([Installation choices])(https://docs.astral.sh/uv/getting-started/installation/)
-- **Ubuntu 24.04 + NVIDIA GPU:** see [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md) (uv, CUDA 12.9 / cu129 stack)
+- **Ubuntu 24.04 + NVIDIA GPU:** see [docs/UBUNTU_SETUP.md](docs/UBUNTU_SETUP.md) (uv, CUDA 13.0 / cu130 stack)
 
 ## **Installation Guide (VisoMaster-Fusion)**
 
@@ -117,7 +117,7 @@ source .venv/bin/activate
 
 **3. Install requirements**
 ```
-uv pip install -r requirements_cu129.txt
+uv pip install -r requirements_cu130.txt
 ```
 
 **4. Download required models**
@@ -162,15 +162,15 @@ python main.py
 **6.1 Update to latest code state**
 
 ```sh
-# Windows (cu129)
-scripts\update_cu129.bat
+# Windows (cu130)
+scripts\update_cu130.bat
 
 # Ubuntu
 ./scripts/ubuntu/update.sh
 
 # Or manually
 git pull
-uv pip install -r requirements_cu129.txt
+uv pip install -r requirements_cu130.txt
 python download_models.py
 ```
 

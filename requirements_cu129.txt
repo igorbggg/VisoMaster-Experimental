@@ -1,3 +1,4 @@
+# DEPRECATED: use requirements_cu130.txt (CUDA 13.0 / cu130 stack).
 numpy
 opencv-python
 pillow

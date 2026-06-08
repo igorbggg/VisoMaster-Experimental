@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Ubuntu 24.04 installer for VisoMaster-Fusion (CUDA 12.9 / cu129 stack).
+# Ubuntu 24.04 installer for VisoMaster-Fusion (CUDA 13.0 / cu130 stack).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 PYTHON="${PYTHON:-python3.11}"
-REQUIREMENTS="requirements_cu129.txt"
+REQUIREMENTS="requirements_cu130.txt"
 
 echo "=== VisoMaster Ubuntu installer ==="
 echo "Project root: $ROOT"
@@ -70,6 +70,8 @@ else
 fi
 
 echo ""
+echo "NOTE: After upgrading from cu129, recreate the venv if install fails:"
+echo "  rm -rf .venv && ./scripts/ubuntu/install.sh"
 echo "NOTE: If you migrated from Windows, clear incompatible TensorRT engine cache:"
 echo "  rm -rf tensorrt-engines/ model_assets/liveportrait_onnx/*.trt"
 

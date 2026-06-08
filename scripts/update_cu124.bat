@@ -1,6 +1,6 @@
 @echo off
-REM DEPRECATED: requirements_cu124.txt is no longer maintained. Use requirements_cu129.txt instead.
-echo WARNING: update_cu124.bat is deprecated. Use scripts\update_cu129.bat or scripts\ubuntu\update.sh
+REM DEPRECATED: use requirements_cu130.txt instead.
+echo WARNING: update_cu124.bat is deprecated. Use scripts\update_cu130.bat or scripts\ubuntu\update.sh
 call scripts\setenv.bat
 "%GIT_EXECUTABLE%" fetch origin main
 "%GIT_EXECUTABLE%" reset --hard origin/main

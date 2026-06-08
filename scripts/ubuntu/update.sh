@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Update code and cu129 dependencies on Ubuntu.
+# Update code and cu130 dependencies on Ubuntu.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-REQUIREMENTS="requirements_cu129.txt"
+REQUIREMENTS="requirements_cu130.txt"
 
 if [[ ! -f ".venv/bin/activate" ]]; then
     echo "ERROR: .venv not found. Run ./scripts/ubuntu/install.sh first."

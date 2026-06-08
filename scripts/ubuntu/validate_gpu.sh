@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GPU smoke tests for Ubuntu 24.04 + NVIDIA RTX 5080 (CUDA 12.9 / cu129 stack).
+# GPU smoke tests for Ubuntu 24.04 + NVIDIA GPU (CUDA 13.0 / cu130 stack).
 # Run from project root after install.sh, with venv activated or via install path.
 set -euo pipefail
 
